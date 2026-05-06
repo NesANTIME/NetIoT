@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IoT Guardian — Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { min-height: 100vh; background: #19395e; font-family: 'Raleway', sans-serif; color: #1a1a1a; display: flex; flex-direction: column; }
+    .topbar { background: #1a1a1a; padding: 0 24px; height: 64px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+    .topbar-left { display: flex; align-items: center; gap: 14px; }
+    .topbar-logo { height: 44px; max-width: 130px; display: flex; align-items: center; flex-shrink: 0; }
+    .topbar-logo-ph { height: 40px; width: 40px; border-radius: 9px; border: 1.5px dashed rgba(216,232,197,0.25); display: flex; align-items: center; justify-content: center; color: rgba(216,232,197,0.35); flex-shrink: 0; }
+    .topbar-sep { width: 1px; height: 26px; background: rgba(255,255,255,0.09); flex-shrink: 0; }
+    .topbar-brand { font-family: 'Playfair Display', serif; font-size: 1.05rem; color: #D8E8C5; display: flex; align-items: center; gap: 9px; white-space: nowrap; }
+    .topbar-right { display: flex; align-items: center; gap: 12px; }
+    .user-chip { background: rgba(255,255,255,0.09); border-radius: 20px; padding: 5px 14px; font-size: 0.8rem; font-weight: 600; color: #E8D5C5; letter-spacing: 0.03em; white-space: nowrap; }
+    .menu-wrap { position: relative; }
+    .btn-menu { width: 38px; height: 38px; border-radius: 10px; background: rgba(255,255,255,0.07); border: 1.5px solid rgba(255,255,255,0.11); cursor: pointer; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.7); transition: background 0.2s, border-color 0.2s, color 0.2s; }
+    .btn-menu:hover, .btn-menu.active { background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.22); color: #fff; }
+    .dropdown { position: absolute; top: calc(100% + 10px); right: 0; width: 248px; background: #1e1e1e; border: 1px solid rgba(255,255,255,0.09); border-radius: 14px; box-shadow: 0 16px 48px rgba(0,0,0,0.5); overflow: hidden; opacity: 0; pointer-events: none; transform: translateY(-8px) scale(0.97); transition: opacity 0.17s ease, transform 0.17s ease; z-index: 500; }
+    .dropdown.open { opacity: 1; pointer-events: all; transform: translateY(0) scale(1); }
+    .dd-user { padding: 14px 16px 12px; border-bottom: 1px solid rgba(255,255,255,0.07); }
+    .dd-user-name { font-weight: 700; font-size: 0.88rem; color: #E8D5C5; margin-bottom: 2px; }
+    .dd-user-email { font-size: 0.74rem; color: rgba(255,255,255,0.38); }
+    .dd-sep { height: 1px; background: rgba(255,255,255,0.07); margin: 4px 0; }
+    .dd-item { width: 100%; background: none; border: none; cursor: pointer; padding: 9px 16px; display: flex; align-items: center; gap: 10px; font-family: 'Raleway', sans-serif; font-size: 0.84rem; font-weight: 600; color: rgba(255,255,255,0.7); text-align: left; transition: background 0.14s, color 0.14s; white-space: nowrap; }
+    .dd-item:hover { background: rgba(255,255,255,0.06); color: #fff; }
+    .dd-item.active { color: #D8E8C5; }
+    .dd-item svg { opacity: 0.55; flex-shrink: 0; transition: opacity 0.14s; }
+    .dd-item:hover svg, .dd-item.active svg { opacity: 1; }
+    .dd-item.danger { color: rgba(224,85,85,0.8); }
+    .dd-item.danger:hover { background: rgba(224,85,85,0.1); color: #e05555; }
+    .main { flex: 1; padding: 32px; display: flex; flex-direction: column; gap: 24px; max-width: 1280px; width: 100%; margin: 0 auto; }
+    .section-card { background: #E8D5C5; border-radius: 16px; padding: 28px 32px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); animation: fadeUp 0.5s ease both; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+    .section-title { font-family: 'Playfair Display', serif; font-size: 1.25rem; font-weight: 700; }
+    .section-subtitle { font-size: 0.82rem; color: rgba(0,0,0,0.45); margin-top: 2px; }
+    .section-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .btn { padding: 10px 22px; border: none; border-radius: 10px; font-family: 'Raleway', sans-serif; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; transition: background 0.2s, transform 0.15s, box-shadow 0.2s; display: inline-flex; align-items: center; gap: 7px; }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0,0,0,0.15); }
+    .btn:active { transform: translateY(0); }
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-primary { background: #D8E8C5; color: #1a1a1a; }
+    .btn-primary:hover { background: #bfd4a8; }
+    .btn-danger { background: #f8d7d7; color: #c0392b; }
+    .btn-danger:hover { background: #f1b8b8; }
+    .btn-secondary { background: rgba(0,0,0,0.07); color: #1a1a1a; }
+    .btn-secondary:hover { background: rgba(0,0,0,0.13); }
+    .btn-sm { padding: 6px 14px; font-size: 0.78rem; }
+    .btn-manage { background: rgba(25,57,94,0.1); color: #19395e; }
+    .btn-manage:hover { background: rgba(25,57,94,0.18); }
+    .btn-vista { background: rgba(0,0,0,0.06); color: rgba(0,0,0,0.55); border: 1.5px solid transparent; padding: 7px 13px; font-size: 0.78rem; }
+    .btn-vista:hover { background: rgba(0,0,0,0.11); color: #1a1a1a; }
+    .btn-vista.active { background: rgba(25,57,94,0.15); color: #19395e; border-color: rgba(25,57,94,0.25); }
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 700; background: rgba(216,232,197,0.7); color: #3a5c2a; white-space: nowrap; }
+    .table-wrap { overflow-x: auto; border-radius: 10px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    thead tr { background: rgba(0,0,0,0.06); }
+    th { padding: 12px 14px; text-align: left; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: rgba(0,0,0,0.5); white-space: nowrap; }
+    td { padding: 12px 14px; border-top: 1px solid rgba(0,0,0,0.07); vertical-align: middle; }
+    tbody tr { transition: background 0.15s; }
+    tbody tr:hover { background: rgba(0,0,0,0.03); }
+    .td-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+    .devices-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(272px, 1fr)); gap: 16px; }
+    .device-card { background: rgba(255,255,255,0.32); border: 1.5px solid rgba(0,0,0,0.06); border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 12px; transition: background 0.2s, box-shadow 0.2s, transform 0.15s; }
+    .device-card:hover { background: rgba(255,255,255,0.55); box-shadow: 0 6px 22px rgba(0,0,0,0.1); transform: translateY(-2px); }
+    .dc-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+    .dc-name { font-weight: 700; font-size: 0.95rem; line-height: 1.3; word-break: break-word; }
+    .dc-model { font-size: 0.74rem; color: rgba(0,0,0,0.42); margin-top: 2px; }
+    .dc-icon { width: 38px; height: 38px; border-radius: 10px; background: rgba(25,57,94,0.1); display: flex; align-items: center; justify-content: center; color: #19395e; flex-shrink: 0; }
+    .dc-meta { display: flex; flex-direction: column; gap: 5px; font-size: 0.77rem; color: rgba(0,0,0,0.52); }
+    .dc-meta-row { display: flex; align-items: center; gap: 6px; }
+    .dc-meta-row svg { opacity: 0.45; flex-shrink: 0; }
+    .dc-footer { display: flex; gap: 6px; flex-wrap: wrap; padding-top: 10px; border-top: 1px solid rgba(0,0,0,0.07); margin-top: auto; }
+    .empty-state { text-align: center; padding: 48px 20px; color: rgba(0,0,0,0.4); }
+    .empty-state svg { margin-bottom: 14px; opacity: 0.4; display: block; margin-left: auto; margin-right: auto; }
+    .empty-state p { font-size: 0.95rem; }
+    .spinner { width: 20px; height: 20px; border: 2.5px solid rgba(26,26,26,0.15); border-top-color: #1a1a1a; border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-row td { text-align: center; padding: 40px; }
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(26,26,26,0.5); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 20px; opacity: 0; pointer-events: none; transition: opacity 0.25s ease; }
+    .modal-backdrop.open { opacity: 1; pointer-events: all; }
+    .modal { background: #E8D5C5; border-radius: 18px; width: 100%; max-width: 780px; max-height: 88vh; display: flex; flex-direction: column; box-shadow: 0 24px 72px rgba(0,0,0,0.25); transform: translateY(24px); transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+    .modal-backdrop.open .modal { transform: translateY(0); }
+    .modal-header { padding: 24px 28px 20px; border-bottom: 1px solid rgba(0,0,0,0.08); display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-shrink: 0; }
+    .modal-title { font-family: 'Playfair Display', serif; font-size: 1.1rem; font-weight: 700; }
+    .modal-subtitle { font-size: 0.8rem; color: rgba(0,0,0,0.45); margin-top: 3px; }
+    .btn-close { background: none; border: none; cursor: pointer; padding: 4px; color: rgba(0,0,0,0.45); border-radius: 6px; transition: color 0.2s, background 0.2s; flex-shrink: 0; }
+    .btn-close:hover { color: #1a1a1a; background: rgba(0,0,0,0.07); }
+    .modal-body { padding: 20px 28px; overflow-y: auto; flex: 1; }
+    .modal-footer { padding: 16px 28px 20px; border-top: 1px solid rgba(0,0,0,0.08); display: flex; justify-content: flex-end; gap: 10px; flex-shrink: 0; }
+    .scan-list { display: flex; flex-direction: column; gap: 12px; }
+    .scan-card { background: rgba(255,255,255,0.35); border: 2px solid transparent; border-radius: 12px; padding: 16px; display: grid; grid-template-columns: auto 1fr auto; align-items: start; gap: 14px; transition: border-color 0.2s, background 0.2s; cursor: pointer; }
+    .scan-card:hover { background: rgba(255,255,255,0.55); }
+    .scan-card.selected { border-color: #8a9e7a; background: rgba(216,232,197,0.35); }
+    .scan-checkbox { margin-top: 3px; width: 18px; height: 18px; accent-color: #8a9e7a; cursor: pointer; flex-shrink: 0; }
+    .scan-info { min-width: 0; }
+    .scan-name { font-weight: 700; font-size: 0.92rem; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .scan-meta { font-size: 0.78rem; color: rgba(0,0,0,0.5); display: flex; flex-wrap: wrap; gap: 6px 14px; }
+    .scan-meta span { display: flex; align-items: center; gap: 4px; }
+    .scan-ubicacion { display: flex; flex-direction: column; gap: 4px; min-width: 140px; }
+    .scan-ubicacion label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(0,0,0,0.45); }
+    .scan-ubicacion input { padding: 7px 10px; border: 1.5px solid rgba(0,0,0,0.18); border-radius: 8px; background: rgba(255,255,255,0.5); font-family: 'Raleway', sans-serif; font-size: 0.82rem; color: #1a1a1a; outline: none; width: 100%; transition: border-color 0.2s; }
+    .scan-ubicacion input:focus { border-color: #8a9e7a; }
+    .scan-actions-top { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; font-size: 0.85rem; }
+    #scan-count { font-weight: 700; color: #4e7c3a; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-grid .full-col { grid-column: 1 / -1; }
+    .field { margin-bottom: 16px; }
+    .field label { display: block; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(0,0,0,0.5); margin-bottom: 6px; }
+    .field input, .field textarea { width: 100%; padding: 10px 13px; border: 1.5px solid rgba(0,0,0,0.18); border-radius: 9px; background: rgba(255,255,255,0.4); color: #1a1a1a; font-family: 'Raleway', sans-serif; font-size: 0.88rem; outline: none; transition: border-color 0.2s, background 0.2s; }
+    .field input:focus, .field textarea:focus { border-color: #1a1a1a; background: rgba(255,255,255,0.65); }
+    .field textarea { resize: vertical; min-height: 72px; }
+    .field input[readonly] { background: rgba(0,0,0,0.05); color: rgba(0,0,0,0.6); cursor: default; }
+    /* Account modal styles */
+    .user-profile-card { display: flex; align-items: center; gap: 16px; padding: 16px; background: rgba(25,57,94,0.08); border-radius: 12px; margin-bottom: 22px; }
+    .user-avatar { width: 48px; height: 48px; border-radius: 50%; background: #19395e; display: flex; align-items: center; justify-content: center; color: #D8E8C5; font-weight: 700; font-size: 1.15rem; flex-shrink: 0; }
+    .user-info-card { flex: 1; min-width: 0; }
+    .user-info-card .uname { font-weight: 700; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-info-card .uemail { font-size: 0.78rem; color: rgba(0,0,0,0.5); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-info-card .udate { font-size: 0.72rem; color: rgba(0,0,0,0.38); margin-top: 3px; }
+    .pw-section { margin-top: 22px; padding-top: 18px; border-top: 1px solid rgba(0,0,0,0.08); }
+    .pw-section h3 { font-family: 'Playfair Display', serif; font-size: 1rem; font-weight: 700; margin-bottom: 14px; }
+    .danger-zone { margin-top: 24px; padding: 18px; background: rgba(224,85,85,0.07); border: 1.5px solid rgba(224,85,85,0.2); border-radius: 12px; }
+    .danger-zone h3 { color: #c0392b; font-family: 'Playfair Display', serif; font-size: 0.95rem; margin-bottom: 8px; }
+    .danger-zone p { font-size: 0.82rem; color: rgba(0,0,0,0.55); margin-bottom: 14px; line-height: 1.6; }
+    /* Connection modal styles */
+    .conn-status-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; padding: 12px 16px; background: rgba(0,0,0,0.05); border-radius: 10px; }
+    .status-dot { width: 11px; height: 11px; border-radius: 50%; background: rgba(0,0,0,0.2); flex-shrink: 0; transition: background 0.3s; }
+    .status-dot.online { background: #4e7c3a; }
+    .status-dot.offline { background: #e05555; }
+    .status-dot.checking { background: #ea7c2a; animation: blink 1s infinite; }
+    @keyframes blink { 0%,100%{opacity:1;}50%{opacity:0.35;} }
+    .mode-toggle { display: flex; gap: 8px; margin-top: 10px; }
+    .mode-btn { flex: 1; padding: 9px 12px; border: 1.5px solid rgba(0,0,0,0.18); border-radius: 8px; background: rgba(255,255,255,0.4); font-family: 'Raleway', sans-serif; font-size: 0.82rem; font-weight: 600; cursor: pointer; color: rgba(0,0,0,0.65); transition: all 0.2s; }
+    .mode-btn.active { background: #19395e; color: #D8E8C5; border-color: #19395e; }
+    .instructions-box { background: rgba(0,0,0,0.04); border-radius: 8px; padding: 14px; font-size: 0.82rem; line-height: 1.75; color: rgba(0,0,0,0.65); }
+    .instructions-box ol { margin-left: 16px; margin-top: 6px; }
+    .instructions-box code { background: rgba(0,0,0,0.08); padding: 1px 5px; border-radius: 4px; font-family: monospace; font-size: 0.85em; }
+    /* Dispositivos modal */
+    .disp-list { display: flex; flex-direction: column; gap: 10px; }
+    .disp-item { display: flex; align-items: center; gap: 12px; padding: 14px; background: rgba(255,255,255,0.35); border-radius: 10px; }
+    .disp-icon { width: 36px; height: 36px; border-radius: 9px; background: rgba(25,57,94,0.1); display: flex; align-items: center; justify-content: center; color: #19395e; flex-shrink: 0; }
+    .disp-info { flex: 1; min-width: 0; }
+    .disp-name { font-weight: 700; font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .disp-sub { font-size: 0.74rem; color: rgba(0,0,0,0.45); margin-top: 2px; }
+    .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px); padding: 13px 24px; border-radius: 12px; font-size: 0.88rem; font-weight: 600; color: #fff; display: flex; align-items: center; gap: 8px; opacity: 0; transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1), opacity 0.35s ease; z-index: 999; pointer-events: none; white-space: nowrap; box-shadow: 0 8px 28px rgba(0,0,0,0.2); }
+    .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    .toast.success { background: #4e7c3a; }
+    .toast.error { background: #e05555; }
+    .scanner-chip { display: flex; align-items: center; gap: 7px; background: rgba(255,255,255,0.07); border: 1.5px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 4px 12px 4px 8px; cursor: pointer; transition: background 0.2s, border-color 0.2s; user-select: none; }
+    .scanner-chip:hover { background: rgba(255,255,255,0.13); border-color: rgba(255,255,255,0.2); }
+    .scanner-chip .status-dot { width: 9px; height: 9px; flex-shrink: 0; }
+    #topbar-status-text { font-size: 0.75rem; font-weight: 600; color: rgba(255,255,255,0.6); white-space: nowrap; letter-spacing: 0.02em; }
+  </style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-logo" title="IoT Guardian">
+        <div class="topbar-logo-ph">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+        </div>
+      </div>
+      <div class="topbar-sep"></div>
+      <div class="topbar-brand">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D8E8C5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+          <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+        </svg>
+        IoT Guardian
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <div class="scanner-chip" id="scanner-chip" title="Estado del IoT Scanner — clic para configurar" onclick="cerrarMenu();abrirConexion()">
+        <span class="status-dot" id="topbar-status-dot"></span>
+        <span id="topbar-status-text">Scanner</span>
+      </div>
+      <span class="user-chip" id="user-chip">–</span>
+      <div class="menu-wrap">
+        <button class="btn-menu" id="btn-menu" onclick="toggleMenu()" title="Menú">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
+          </svg>
+        </button>
+
+        <div class="dropdown" id="main-dropdown">
+          <div class="dd-user">
+            <div class="dd-user-name" id="menu-nombre">–</div>
+            <div class="dd-user-email" id="menu-correo">–</div>
+          </div>
+
+          <div class="dd-sep"></div>
+
+          <button class="dd-item" onclick="cerrarMenu(); abrirCuenta()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+            </svg>
+            Cuenta
+          </button>
+
+          <button class="dd-item" onclick="cerrarMenu(); abrirConexion()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M4.93 4.93a10 10 0 0 1 14.14 0M1.39 9a11.5 11.5 0 0 1 21.22 0M7.76 7.76a6 6 0 0 1 8.48 0"/>
+            </svg>
+            Conexión
+          </button>
+
+          <button class="dd-item" onclick="cerrarMenu(); abrirDispositivos()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/>
+            </svg>
+            Dispositivos
+          </button>
+
+          <div class="dd-sep"></div>
+
+          <button class="dd-item danger" onclick="logout()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            Cerrar Sesión
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="section-card">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Mis Dispositivos</div>
+          <div class="section-subtitle" id="device-count">Cargando...</div>
+        </div>
+        <div class="section-actions">
+          <button class="btn btn-vista active" id="btn-vista-lista" onclick="setVista('lista')" title="Vista lista">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+              <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+            </svg>
+            Lista
+          </button>
+          <button class="btn btn-vista" id="btn-vista-grid" onclick="setVista('grid')" title="Vista cuadrícula">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+              <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+            </svg>
+            Cuadrícula
+          </button>
+          <button class="btn btn-primary" onclick="abrirScan()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            Escanear red
+          </button>
+        </div>
+      </div>
+
+      <div id="view-lista">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Dispositivo</th><th>Tipo</th><th>Fabricante</th>
+                <th>IP</th><th>MAC</th><th>Ubicación</th><th>Registrado</th><th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-body">
+              <tr class="loading-row"><td colspan="8"><span class="spinner"></span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="view-grid" style="display:none;">
+        <div class="devices-grid" id="grid-body">
+          <div style="grid-column:1/-1;text-align:center;padding:40px;"><span class="spinner"></span></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal: Escanear red -->
+  <div class="modal-backdrop" id="modal-scan-backdrop" onclick="cerrarScan(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">Dispositivos IoT encontrados en la red</div>
+          <div class="modal-subtitle" id="scan-subtitle">Conectando con IoT Scanner local...</div>
+        </div>
+        <button class="btn-close" onclick="cerrarScan()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="scan-actions-top" id="scan-actions-top" style="display:none;">
+          <input type="checkbox" id="check-all" onchange="toggleTodos(this)" style="width:16px;height:16px;accent-color:#8a9e7a;cursor:pointer;">
+          <label for="check-all" style="cursor:pointer;user-select:none;">Seleccionar todos</label>
+          <span id="scan-count"></span>
+        </div>
+        <div class="scan-list" id="scan-list"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarScan()">Cancelar</button>
+        <button class="btn btn-primary" id="btn-agregar" onclick="agregarSeleccionados()" disabled>Añadir seleccionados</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Conexión (IoT Scanner) -->
+  <div class="modal-backdrop" id="modal-conexion-backdrop" onclick="cerrarConexion(event)">
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:540px;">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">Conexión — IoT Scanner</div>
+          <div class="modal-subtitle">Estado de la conexión con el scanner local</div>
+        </div>
+        <button class="btn-close" onclick="cerrarConexion()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="conn-status-bar">
+          <span class="status-dot checking" id="conn-status-dot"></span>
+          <span id="conn-status-text" style="font-size:0.85rem;color:rgba(0,0,0,0.6);flex:1;">Verificando...</span>
+          <button onclick="verificarScanner()" style="background:none;border:1.5px solid rgba(0,0,0,0.18);border-radius:7px;padding:5px 14px;font-size:0.75rem;font-family:Raleway,sans-serif;font-weight:700;cursor:pointer;color:rgba(0,0,0,0.5);">Reconectar</button>
+        </div>
+
+        <div class="field">
+          <label>Puerto del scanner</label>
+          <input type="number" id="cfg-port" value="8765" min="1024" max="65535">
+          <div style="font-size:0.75rem;color:rgba(0,0,0,0.4);margin-top:4px;">Por defecto: 8765. Cambia solo si configuraste otro puerto.</div>
+        </div>
+
+        <div style="margin-bottom:16px;">
+          <div style="font-size:0.75rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:rgba(0,0,0,0.5);margin-bottom:8px;">Modo de escaneo</div>
+          <div class="mode-toggle">
+            <button class="mode-btn active" id="btn-modo-nmap" onclick="setScanMode('nmap')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:5px;">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+              </svg>
+              NMAP
+            </button>
+            <button class="mode-btn" id="btn-modo-builtin" onclick="setScanMode('builtin')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:5px;">
+                <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/>
+              </svg>
+              Integrado
+            </button>
+          </div>
+        </div>
+
+        <div class="instructions-box">
+          <strong>Cómo conectar el IoT Scanner:</strong>
+          <ol>
+            <li>Descarga el scanner desde la carpeta <code>Programa Cliente (Python)</code></li>
+            <li>Ejecuta: <code>python main.py</code></li>
+            <li>El scanner abre el dashboard automáticamente y se conecta</li>
+            <li>Si ya está corriendo, haz clic en <strong>Reconectar</strong></li>
+          </ol>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarConexion()">Cerrar</button>
+        <button class="btn btn-primary" onclick="guardarConfigScanner()">Guardar puerto</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Cuenta -->
+  <div class="modal-backdrop" id="modal-cuenta-backdrop" onclick="cerrarCuenta(event)">
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:500px;">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">Mi Cuenta</div>
+          <div class="modal-subtitle">Información y configuración de tu cuenta</div>
+        </div>
+        <button class="btn-close" onclick="cerrarCuenta()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="user-profile-card">
+          <div class="user-avatar" id="cuenta-avatar">–</div>
+          <div class="user-info-card">
+            <div class="uname" id="cuenta-display-nombre">–</div>
+            <div class="uemail" id="cuenta-display-correo">–</div>
+            <div class="udate" id="cuenta-display-fecha">–</div>
+          </div>
+        </div>
+
+        <div class="pw-section">
+          <h3>Cambiar Contraseña</h3>
+          <div class="field">
+            <label>Contraseña actual</label>
+            <input type="password" id="cuenta-old-pw" placeholder="Tu contraseña actual" autocomplete="current-password">
+          </div>
+          <div class="field">
+            <label>Nueva contraseña</label>
+            <input type="password" id="cuenta-new-pw" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
+          </div>
+          <div class="field">
+            <label>Confirmar nueva contraseña</label>
+            <input type="password" id="cuenta-conf-pw" placeholder="Repite la contraseña" autocomplete="new-password">
+          </div>
+          <button class="btn btn-primary" onclick="cambiarPassword()">Cambiar contraseña</button>
+        </div>
+
+        <div class="danger-zone">
+          <h3>Zona de Peligro</h3>
+          <p>Eliminar tu cuenta borrará permanentemente todos tus dispositivos registrados y datos asociados. Esta acción no se puede deshacer.</p>
+          <button class="btn btn-danger" onclick="eliminarCuenta()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M9 6V4h6v2"/>
+            </svg>
+            Eliminar mi cuenta
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Dispositivos -->
+  <div class="modal-backdrop" id="modal-disp-backdrop" onclick="cerrarDispositivos(event)">
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:580px;">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">Mis Dispositivos</div>
+          <div class="modal-subtitle" id="disp-subtitle">Dispositivos registrados en el panel</div>
+        </div>
+        <button class="btn-close" onclick="cerrarDispositivos()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="disp-list" id="disp-list">
+          <div style="text-align:center;padding:32px;"><span class="spinner"></span></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarDispositivos()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Editar dispositivo -->
+  <div class="modal-backdrop" id="modal-edit-backdrop" onclick="cerrarEdit(event)">
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:600px;">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">Editar dispositivo</div>
+          <div class="modal-subtitle">Corrige los datos del dispositivo</div>
+        </div>
+        <button class="btn-close" onclick="cerrarEdit()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="edit-id">
+        <div class="form-grid">
+          <div class="field full-col">
+            <label>Nombre del dispositivo *</label>
+            <input type="text" id="edit-nombre" placeholder="ej. Smart Bulb A1">
+          </div>
+          <div class="field"><label>Tipo</label><input type="text" id="edit-tipo" placeholder="ej. Iluminación"></div>
+          <div class="field"><label>Modelo</label><input type="text" id="edit-modelo" placeholder="ej. SB-A60"></div>
+          <div class="field full-col">
+            <label>Descripción</label>
+            <textarea id="edit-descripcion" placeholder="Descripción del dispositivo..."></textarea>
+          </div>
+          <div class="field"><label>Fabricante</label><input type="text" id="edit-fabricante-nombre" placeholder="ej. Samsung"></div>
+          <div class="field"><label>País fabricante</label><input type="text" id="edit-fabricante-pais" placeholder="ej. Corea del Sur"></div>
+          <div class="field full-col"><label>Sitio web fabricante</label><input type="url" id="edit-fabricante-web" placeholder="https://..."></div>
+          <div class="field"><label>Dirección IP</label><input type="text" id="edit-ip" placeholder="192.168.1.x"></div>
+          <div class="field"><label>Dirección MAC</label><input type="text" id="edit-mac" placeholder="AA:BB:CC:DD:EE:FF"></div>
+          <div class="field full-col"><label>Ubicación</label><input type="text" id="edit-ubicacion" placeholder="ej. Sala de estar"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarEdit()">Cancelar</button>
+        <button class="btn btn-primary" id="btn-guardar-edit" onclick="guardarEdicion()">Guardar cambios</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const token = localStorage.getItem('jwt_token');
+    if (!token) { window.location.href = '/login'; }
+
+    document.getElementById('user-chip').textContent =
+      localStorage.getItem('user_nombre') || localStorage.getItem('user_correo') || 'Usuario';
+    document.getElementById('menu-nombre').textContent =
+      localStorage.getItem('user_nombre') || 'Usuario';
+    document.getElementById('menu-correo').textContent =
+      localStorage.getItem('user_correo') || '';
+
+    function authHeaders() {
+      return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+    }
+
+    async function apiFetch(url, opts = {}) {
+      opts.headers = { ...authHeaders(), ...opts.headers };
+      const resp = await fetch(url, opts);
+      if (resp.status === 401 || resp.status === 403) { logout(); throw new Error('No autorizado'); }
+      return resp;
+    }
+
+    let toastTimer = null;
+    function showToast(msg, type = 'success') {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.className = `toast ${type} show`;
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
+    }
+
+    function toggleMenu() {
+      const dd  = document.getElementById('main-dropdown');
+      const btn = document.getElementById('btn-menu');
+      const open = dd.classList.toggle('open');
+      btn.classList.toggle('active', open);
+    }
+
+    function cerrarMenu() {
+      document.getElementById('main-dropdown').classList.remove('open');
+      document.getElementById('btn-menu').classList.remove('active');
+    }
+
+    document.addEventListener('click', e => { if (!e.target.closest('.menu-wrap')) cerrarMenu(); });
+
+    let currentVista = localStorage.getItem('vista_dispositivos') || 'lista';
+    let cachedLista  = [];
+
+    function setVista(v) {
+      currentVista = v;
+      localStorage.setItem('vista_dispositivos', v);
+      document.getElementById('btn-vista-lista').classList.toggle('active', v === 'lista');
+      document.getElementById('btn-vista-grid').classList.toggle('active',  v === 'grid');
+      document.getElementById('view-lista').style.display = v === 'lista' ? '' : 'none';
+      document.getElementById('view-grid').style.display  = v === 'grid'  ? '' : 'none';
+      if (v === 'lista') renderTabla(cachedLista);
+      else renderGrid(cachedLista);
+    }
+
+    function logout() {
+      ['jwt_token','user_nombre','user_correo','user_role'].forEach(k => localStorage.removeItem(k));
+      window.location.href = '/login';
+    }
+
+    function fmtDate(iso) {
+      if (!iso) return '–';
+      return new Date(iso).toLocaleDateString('es-MX', { day:'2-digit', month:'short', year:'numeric' });
+    }
+
+    function esc(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function deviceIcon(tipo) {
+      const t = (tipo || '').toLowerCase();
+      if (t.includes('foco') || t.includes('luz') || t.includes('bulb') || t.includes('lamp'))
+        return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="9" y1="18" x2="15" y2="18"/><line x1="10" y1="22" x2="14" y2="22"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/></svg>`;
+      if (t.includes('cam') || t.includes('camara'))
+        return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>`;
+      if (t.includes('enchufe') || t.includes('switch') || t.includes('plug'))
+        return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/><line x1="12" y1="12" x2="12" y2="16"/></svg>`;
+      return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>`;
+    }
+
+    function accionesBtns(d) {
+      return `<button class="btn btn-secondary btn-sm" onclick="abrirEdit(${d.id})">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Editar
+         </button>
+         <button class="btn btn-danger btn-sm" onclick="eliminar(${d.id},'${esc(d.nombreDispositivo)}')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+          Eliminar
+         </button>`;
+    }
+
+    function renderTabla(lista) {
+      document.getElementById('device-count').textContent =
+        lista.length === 0 ? 'Sin dispositivos aún' : `${lista.length} dispositivo${lista.length !== 1 ? 's' : ''}`;
+      const tbody = document.getElementById('tabla-body');
+      if (lista.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/></svg>
+          <p>No tienes dispositivos registrados.<br>Usa <strong>Escanear red</strong> para encontrar dispositivos.</p>
+        </div></td></tr>`;
+        return;
+      }
+      tbody.innerHTML = lista.map(d => `
+        <tr>
+          <td><div style="font-weight:700;font-size:0.9rem;">${esc(d.nombreDispositivo)}</div>${d.modelo?`<div style="font-size:0.75rem;color:rgba(0,0,0,0.45);">${esc(d.modelo)}</div>`:''}</td>
+          <td>${d.tipo?`<span class="badge">${esc(d.tipo)}</span>`:'–'}</td>
+          <td><div>${d.fabricanteNombre?esc(d.fabricanteNombre):'–'}</div>${d.fabricantePais?`<div style="font-size:0.75rem;color:rgba(0,0,0,0.45);">${esc(d.fabricantePais)}</div>`:''}</td>
+          <td style="font-size:0.83rem;font-family:monospace;">${d.ipAddress||'–'}</td>
+          <td style="font-size:0.83rem;font-family:monospace;">${d.macAddress||'–'}</td>
+          <td>${d.ubicacion?esc(d.ubicacion):'<span style="color:rgba(0,0,0,0.3)">Sin definir</span>'}</td>
+          <td style="font-size:0.8rem;color:rgba(0,0,0,0.5);">${fmtDate(d.fechaRegistro)}</td>
+          <td><div class="td-actions">${accionesBtns(d)}</div></td>
+        </tr>`).join('');
+    }
+
+    function renderGrid(lista) {
+      document.getElementById('device-count').textContent =
+        lista.length === 0 ? 'Sin dispositivos aún' : `${lista.length} dispositivo${lista.length !== 1 ? 's' : ''}`;
+      const grid = document.getElementById('grid-body');
+      if (lista.length === 0) {
+        grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/></svg>
+          <p>No tienes dispositivos registrados.<br>Usa <strong>Escanear red</strong> para encontrar dispositivos.</p>
+        </div>`;
+        return;
+      }
+      grid.innerHTML = lista.map(d => `
+        <div class="device-card">
+          <div class="dc-header">
+            <div>
+              <div class="dc-name">${esc(d.nombreDispositivo)}</div>
+              ${d.modelo?`<div class="dc-model">${esc(d.modelo)}</div>`:''}
+            </div>
+            <div class="dc-icon">${deviceIcon(d.tipo)}</div>
+          </div>
+          ${d.tipo?`<div><span class="badge">${esc(d.tipo)}</span></div>`:''}
+          <div class="dc-meta">
+            ${d.fabricanteNombre?`<div class="dc-meta-row"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>${esc(d.fabricanteNombre)}${d.fabricantePais?' · '+esc(d.fabricantePais):''}</div>`:''}
+            ${d.ipAddress?`<div class="dc-meta-row"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg><span style="font-family:monospace;font-size:0.77rem;">${d.ipAddress}</span></div>`:''}
+            ${d.macAddress?`<div class="dc-meta-row"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/></svg><span style="font-family:monospace;font-size:0.77rem;">${d.macAddress}</span></div>`:''}
+            ${d.ubicacion?`<div class="dc-meta-row"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${esc(d.ubicacion)}</div>`:''}
+            <div class="dc-meta-row" style="color:rgba(0,0,0,0.35);font-size:0.74rem;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${fmtDate(d.fechaRegistro)}</div>
+          </div>
+          <div class="dc-footer">${accionesBtns(d)}</div>
+        </div>`).join('');
+    }
+
+    async function cargarDispositivos() {
+      document.getElementById('tabla-body').innerHTML =
+        '<tr class="loading-row"><td colspan="8"><span class="spinner"></span></td></tr>';
+      document.getElementById('grid-body').innerHTML =
+        '<div style="grid-column:1/-1;text-align:center;padding:40px;"><span class="spinner"></span></div>';
+      try {
+        const resp = await apiFetch('/api/dispositivos');
+        if (!resp.ok) throw new Error(`Error ${resp.status}`);
+        const data = await resp.json();
+        cachedLista = Array.isArray(data) ? data : [];
+        if (currentVista === 'lista') renderTabla(cachedLista);
+        else renderGrid(cachedLista);
+      } catch (err) {
+        if (err.message !== 'No autorizado') {
+          const errHtml = '<div style="text-align:center;color:#e05555;padding:32px;">Error al cargar dispositivos</div>';
+          document.getElementById('tabla-body').innerHTML = `<tr><td colspan="8">${errHtml}</td></tr>`;
+          document.getElementById('grid-body').innerHTML = `<div style="grid-column:1/-1;">${errHtml}</div>`;
+        }
+      }
+    }
+
+    async function eliminar(id, nombre) {
+      if (!confirm(`¿Eliminar "${nombre}"? Esta acción no se puede deshacer.`)) return;
+      try {
+        const resp = await apiFetch(`/api/dispositivos/${id}`, { method: 'DELETE' });
+        if (resp.ok) { showToast('Dispositivo eliminado.'); cargarDispositivos(); }
+        else { const e = await resp.json(); showToast(e.error || 'No se pudo eliminar.', 'error'); }
+      } catch (err) { if (err.message !== 'No autorizado') showToast('Error de conexión.', 'error'); }
+    }
+
+    async function abrirEdit(id) {
+      const d = cachedLista.find(x => x.id === id);
+      if (!d) { showToast('Dispositivo no encontrado.', 'error'); return; }
+      document.getElementById('edit-id').value                = d.id;
+      document.getElementById('edit-nombre').value            = d.nombreDispositivo || '';
+      document.getElementById('edit-tipo').value              = d.tipo              || '';
+      document.getElementById('edit-modelo').value            = d.modelo            || '';
+      document.getElementById('edit-descripcion').value       = d.descripcion       || '';
+      document.getElementById('edit-fabricante-nombre').value = d.fabricanteNombre  || '';
+      document.getElementById('edit-fabricante-pais').value   = d.fabricantePais    || '';
+      document.getElementById('edit-fabricante-web').value    = d.fabricanteSitioWeb|| '';
+      document.getElementById('edit-ip').value                = d.ipAddress         || '';
+      document.getElementById('edit-mac').value               = d.macAddress        || '';
+      document.getElementById('edit-ubicacion').value         = d.ubicacion         || '';
+      document.getElementById('modal-edit-backdrop').classList.add('open');
+    }
+
+    function cerrarEdit(e) {
+      if (e && e.target !== document.getElementById('modal-edit-backdrop')) return;
+      document.getElementById('modal-edit-backdrop').classList.remove('open');
+    }
+
+    async function guardarEdicion() {
+      const id    = document.getElementById('edit-id').value;
+      const btn   = document.getElementById('btn-guardar-edit');
+      const nombre = document.getElementById('edit-nombre').value.trim();
+      if (!nombre) { document.getElementById('edit-nombre').focus(); showToast('El nombre es obligatorio.', 'error'); return; }
+      btn.disabled = true;
+      const body = {
+        nombreDispositivo:  nombre,
+        tipo:               document.getElementById('edit-tipo').value.trim()              || null,
+        modelo:             document.getElementById('edit-modelo').value.trim()            || null,
+        descripcion:        document.getElementById('edit-descripcion').value.trim()       || null,
+        fabricanteNombre:   document.getElementById('edit-fabricante-nombre').value.trim() || null,
+        fabricantePais:     document.getElementById('edit-fabricante-pais').value.trim()   || null,
+        fabricanteSitioWeb: document.getElementById('edit-fabricante-web').value.trim()    || null,
+        ipAddress:          document.getElementById('edit-ip').value.trim()                || null,
+        macAddress:         document.getElementById('edit-mac').value.trim()               || null,
+        ubicacion:          document.getElementById('edit-ubicacion').value.trim()         || null,
+      };
+      try {
+        const resp = await apiFetch(`/api/dispositivos/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+        if (resp.ok) {
+          document.getElementById('modal-edit-backdrop').classList.remove('open');
+          showToast('Dispositivo actualizado.');
+          cargarDispositivos();
+        } else { const e = await resp.json(); showToast(e.error || 'No se pudo actualizar.', 'error'); }
+      } catch (err) { if (err.message !== 'No autorizado') showToast('Error de conexión.', 'error'); }
+      finally { btn.disabled = false; }
+    }
+
+    // ===================== CUENTA =====================
+    function abrirCuenta() {
+      const nombre = localStorage.getItem('user_nombre') || '–';
+      const correo = localStorage.getItem('user_correo') || '–';
+      document.getElementById('cuenta-avatar').textContent = nombre.charAt(0).toUpperCase();
+      document.getElementById('cuenta-display-nombre').textContent = nombre;
+      document.getElementById('cuenta-display-correo').textContent = correo;
+      document.getElementById('cuenta-old-pw').value = '';
+      document.getElementById('cuenta-new-pw').value = '';
+      document.getElementById('cuenta-conf-pw').value = '';
+
+      apiFetch('/api/auth/me').then(r => r.json()).then(data => {
+        if (data.nombre) {
+          document.getElementById('cuenta-display-nombre').textContent = data.nombre;
+          document.getElementById('cuenta-display-correo').textContent = data.correo;
+          if (data.createdAt) {
+            const d = new Date(data.createdAt);
+            document.getElementById('cuenta-display-fecha').textContent =
+              'Cuenta creada el ' + d.toLocaleDateString('es-MX', { day:'2-digit', month:'long', year:'numeric' });
+          }
+        }
+      }).catch(() => {});
+
+      document.getElementById('modal-cuenta-backdrop').classList.add('open');
+    }
+
+    function cerrarCuenta(e) {
+      if (e && e.target !== document.getElementById('modal-cuenta-backdrop')) return;
+      document.getElementById('modal-cuenta-backdrop').classList.remove('open');
+    }
+
+    async function cambiarPassword() {
+      const oldPw  = document.getElementById('cuenta-old-pw').value;
+      const newPw  = document.getElementById('cuenta-new-pw').value;
+      const confPw = document.getElementById('cuenta-conf-pw').value;
+
+      if (!oldPw || !newPw || !confPw) { showToast('Completa todos los campos.', 'error'); return; }
+      if (newPw !== confPw)  { showToast('Las contraseñas no coinciden.', 'error'); return; }
+      if (newPw.length < 6)  { showToast('La nueva contraseña debe tener al menos 6 caracteres.', 'error'); return; }
+
+      try {
+        const resp = await apiFetch('/api/auth/change-password', {
+          method: 'POST',
+          body: JSON.stringify({ oldPassword: oldPw, newPassword: newPw })
+        });
+        if (resp.ok) {
+          showToast('Contraseña actualizada. Cerrando sesión...', 'success');
+          document.getElementById('modal-cuenta-backdrop').classList.remove('open');
+          setTimeout(logout, 2200);
+        } else {
+          const e = await resp.json();
+          showToast(e.error || 'No se pudo cambiar la contraseña.', 'error');
+        }
+      } catch (err) {
+        if (err.message !== 'No autorizado') showToast('Error de conexión.', 'error');
+      }
+    }
+
+    async function eliminarCuenta() {
+      if (!confirm('¿Eliminar tu cuenta? Se borrarán todos tus dispositivos y datos. Esta acción es irreversible.')) return;
+      try {
+        const resp = await apiFetch('/api/auth/account', { method: 'DELETE' });
+        if (resp.ok) {
+          showToast('Cuenta eliminada.', 'success');
+          setTimeout(logout, 1500);
+        } else {
+          const e = await resp.json();
+          showToast(e.error || 'No se pudo eliminar la cuenta.', 'error');
+        }
+      } catch (err) {
+        if (err.message !== 'No autorizado') showToast('Error de conexión.', 'error');
+      }
+    }
+
+    // ===================== DISPOSITIVOS =====================
+    function abrirDispositivos() {
+      document.getElementById('modal-disp-backdrop').classList.add('open');
+      renderDispositivos();
+    }
+
+    function cerrarDispositivos(e) {
+      if (e && e.target !== document.getElementById('modal-disp-backdrop')) return;
+      document.getElementById('modal-disp-backdrop').classList.remove('open');
+    }
+
+    function renderDispositivos() {
+      const lista = cachedLista;
+      const container = document.getElementById('disp-list');
+      document.getElementById('disp-subtitle').textContent =
+        lista.length === 0 ? 'Sin dispositivos registrados' : `${lista.length} dispositivo${lista.length !== 1 ? 's' : ''} registrado${lista.length !== 1 ? 's' : ''}`;
+
+      if (lista.length === 0) {
+        container.innerHTML = `<div class="empty-state">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/></svg>
+          <p>No tienes dispositivos registrados.<br>Usa <strong>Escanear red</strong> para agregar dispositivos.</p>
+        </div>`;
+        return;
+      }
+
+      container.innerHTML = lista.map(d => `
+        <div class="disp-item">
+          <div class="disp-icon">${deviceIcon(d.tipo)}</div>
+          <div class="disp-info">
+            <div class="disp-name">${esc(d.nombreDispositivo)}</div>
+            <div class="disp-sub">${[d.ipAddress, d.macAddress, d.ubicacion].filter(Boolean).join(' · ') || 'Sin datos de red'}</div>
+          </div>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-secondary btn-sm" onclick="cerrarDispositivos();abrirEdit(${d.id})">Editar</button>
+            <button class="btn btn-danger btn-sm" onclick="eliminarDesdeModal(${d.id},'${esc(d.nombreDispositivo)}')">Quitar</button>
+          </div>
+        </div>`).join('');
+    }
+
+    async function eliminarDesdeModal(id, nombre) {
+      if (!confirm(`¿Quitar "${nombre}" del panel?`)) return;
+      try {
+        const resp = await apiFetch(`/api/dispositivos/${id}`, { method: 'DELETE' });
+        if (resp.ok) {
+          showToast('Dispositivo eliminado.', 'success');
+          await cargarDispositivos();
+          renderDispositivos();
+        } else {
+          showToast('No se pudo eliminar.', 'error');
+        }
+      } catch (err) { if (err.message !== 'No autorizado') showToast('Error de conexión.', 'error'); }
+    }
+
+    // ===================== CONEXIÓN (scanner) =====================
+    const SCANNER_PORT_KEY = 'iot_scanner_port';
+    const SCANNER_MODE_KEY = 'iot_scanner_mode';
+    let _scannerToken = null;
+    let _scannerMode  = localStorage.getItem(SCANNER_MODE_KEY) || 'nmap';
+
+    function _actualizarBotonesModoenConexion() {
+      document.getElementById('btn-modo-nmap').classList.toggle('active', _scannerMode === 'nmap');
+      document.getElementById('btn-modo-builtin').classList.toggle('active', _scannerMode === 'builtin');
+    }
+
+    function _actualizarTopbarScanner(online) {
+      const dot  = document.getElementById('topbar-status-dot');
+      const text = document.getElementById('topbar-status-text');
+      if (!dot || !text) return;
+      dot.className = `status-dot ${online ? 'online' : 'offline'}`;
+      text.textContent = online ? 'Scanner activo' : 'Scanner inactivo';
+    }
+
+    async function _pollScannerStatus() {
+      if (_scannerToken) {
+        try {
+          const resp = await fetch(`${getScannerUrl()}/api/scan-mode`, {
+            headers: { 'Authorization': `Bearer ${_scannerToken}` },
+            signal: AbortSignal.timeout(2500),
+          });
+          if (resp.ok) { _actualizarTopbarScanner(true); return; }
+        } catch { }
+        _scannerToken = null;
+      }
+      await _autoLinkScanner();
+      _actualizarTopbarScanner(!!_scannerToken);
+    }
+
+    function getScannerUrl() {
+      return `http://127.0.0.1:${localStorage.getItem(SCANNER_PORT_KEY) || '8765'}`;
+    }
+
+    async function _autoLinkScanner() {
+      try {
+        const otpResp = await fetch(`${getScannerUrl()}/api/auth/request-otp`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          signal: AbortSignal.timeout(3000),
+        });
+        if (!otpResp.ok) return;
+        const { otp } = await otpResp.json();
+        if (!otp) return;
+        const exchResp = await fetch(`${getScannerUrl()}/api/auth/otp-exchange`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ otp }), signal: AbortSignal.timeout(5000),
+        });
+        if (!exchResp.ok) return;
+        const { token: tok } = await exchResp.json();
+        _scannerToken = tok || null;
+        if (_scannerToken) { _actualizarTopbarScanner(true); await _sincronizarModo(); }
+      } catch { }
+    }
+
+    async function _sincronizarModo() {
+      if (!_scannerToken) return;
+      try {
+        const resp = await fetch(`${getScannerUrl()}/api/scan-mode`, {
+          headers: { 'Authorization': `Bearer ${_scannerToken}` }, signal: AbortSignal.timeout(3000),
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          _scannerMode = data.mode || 'nmap';
+          localStorage.setItem(SCANNER_MODE_KEY, _scannerMode);
+          _actualizarBotonesModoenConexion();
+        }
+      } catch { }
+    }
+
+    async function getScannerToken(forceRefresh = false) {
+      if (_scannerToken && !forceRefresh) return _scannerToken;
+      await _autoLinkScanner();
+      return _scannerToken;
+    }
+
+    async function setScanMode(mode) {
+      const tok = await getScannerToken();
+      if (!tok) { showToast('Conéctate primero con el scanner.', 'error'); return; }
+      try {
+        const resp = await fetch(`${getScannerUrl()}/api/scan-mode`, {
+          method: 'POST', headers: { 'Authorization': `Bearer ${tok}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mode }), signal: AbortSignal.timeout(4000),
+        });
+        const data = await resp.json();
+        if (!resp.ok) { showToast(data.error || 'No se pudo cambiar el modo.', 'error'); return; }
+        _scannerMode = mode;
+        localStorage.setItem(SCANNER_MODE_KEY, mode);
+        _actualizarBotonesModoenConexion();
+        showToast(`Modo: ${mode === 'nmap' ? 'NMAP' : 'Integrado (sin NMAP)'}`);
+      } catch { showToast('Error de conexión con el scanner.', 'error'); }
+    }
+
+    function abrirConexion() {
+      document.getElementById('cfg-port').value = localStorage.getItem(SCANNER_PORT_KEY) || '8765';
+      _actualizarBotonesModoenConexion();
+      document.getElementById('modal-conexion-backdrop').classList.add('open');
+      verificarScanner();
+    }
+
+    function cerrarConexion(e) {
+      if (e && e.target !== document.getElementById('modal-conexion-backdrop')) return;
+      document.getElementById('modal-conexion-backdrop').classList.remove('open');
+    }
+
+    function guardarConfigScanner() {
+      const port = document.getElementById('cfg-port').value.trim() || '8765';
+      localStorage.setItem(SCANNER_PORT_KEY, port);
+      _scannerToken = null;
+      showToast('Puerto del scanner guardado.');
+      _autoLinkScanner();
+    }
+
+    async function verificarScanner() {
+      const dot  = document.getElementById('conn-status-dot');
+      const text = document.getElementById('conn-status-text');
+      dot.className = 'status-dot checking';
+      text.textContent = 'Conectando...';
+      const port = document.getElementById('cfg-port')?.value.trim() || localStorage.getItem(SCANNER_PORT_KEY) || '8765';
+      try {
+        const otpResp = await fetch(`http://127.0.0.1:${port}/api/auth/request-otp`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          signal: AbortSignal.timeout(3000),
+        });
+        if (!otpResp.ok) throw new Error();
+        const { otp } = await otpResp.json();
+        const exchResp = await fetch(`http://127.0.0.1:${port}/api/auth/otp-exchange`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ otp }), signal: AbortSignal.timeout(5000),
+        });
+        if (!exchResp.ok) throw new Error();
+        const { token: tok, username } = await exchResp.json();
+        _scannerToken = tok || null;
+        dot.className = 'status-dot online';
+        text.textContent = `Conectado${username ? ' — ' + username : ''}`;
+        _actualizarTopbarScanner(true);
+        if (_scannerToken) await _sincronizarModo();
+      } catch (err) {
+        dot.className = 'status-dot offline';
+        text.textContent = (err.name === 'AbortError' || err.name === 'TimeoutError')
+          ? 'Scanner no encontrado en ese puerto.'
+          : 'Scanner no activo. Ábrelo y haz clic en Reconectar.';
+        _actualizarTopbarScanner(false);
+      }
+    }
+
+    // ===================== SCAN =====================
+    let scanData = [];
+
+    async function abrirScan() {
+      document.getElementById('scan-list').innerHTML =
+        '<div style="text-align:center;padding:32px;"><span class="spinner"></span></div>';
+      document.getElementById('scan-subtitle').textContent = 'Conectando con IoT Scanner...';
+      document.getElementById('scan-count').textContent = '';
+      document.getElementById('check-all').checked = false;
+      document.getElementById('scan-actions-top').style.display = 'none';
+      document.getElementById('btn-agregar').disabled = true;
+      document.getElementById('modal-scan-backdrop').classList.add('open');
+
+      let scanToken = await getScannerToken(false) || await getScannerToken(true);
+      if (!scanToken) {
+        mostrarErrorScan(`<strong>IoT Scanner no encontrado.</strong><br><br>
+          Asegúrate de que el scanner está corriendo en tu computadora.<br>
+          Ve a <strong>Menú → Conexión</strong> para configurarlo.`);
+        return;
+      }
+
+      const modeLabel = _scannerMode === 'builtin' ? 'scanner integrado' : 'NMAP';
+      document.getElementById('scan-subtitle').textContent = `Escaneando red local con ${modeLabel}...`;
+      try {
+        let scanResp = await fetch(`${getScannerUrl()}/api/scan?mode=${_scannerMode}`, {
+          headers: { 'Authorization': `Bearer ${scanToken}` },
+          signal: AbortSignal.timeout(180_000),
+        });
+        if (scanResp.status === 401) {
+          const newToken = await getScannerToken(true);
+          if (!newToken) { mostrarErrorScan('<strong>Sesión expirada.</strong> Reconecta el scanner.'); return; }
+          scanResp = await fetch(`${getScannerUrl()}/api/scan?mode=${_scannerMode}`, {
+            headers: { 'Authorization': `Bearer ${newToken}` }, signal: AbortSignal.timeout(180_000),
+          });
+        }
+        if (scanResp.status === 429) { mostrarErrorScan('Demasiadas peticiones. Espera un momento.'); return; }
+        if (!scanResp.ok) { const e = await scanResp.json().catch(()=>({})); mostrarErrorScan(e.error || 'Error inesperado.'); return; }
+        scanData = await scanResp.json();
+        document.getElementById('scan-actions-top').style.display = 'flex';
+        document.getElementById('btn-agregar').disabled = false;
+        renderScanCards(scanData);
+      } catch (err) {
+        mostrarErrorScan((err.name === 'TimeoutError' || err.name === 'AbortError')
+          ? 'El escaneo tardó demasiado. Intenta con modo Integrado.'
+          : 'Error de conexión. Verifica que el scanner sigue corriendo.');
+      }
+    }
+
+    function mostrarErrorScan(htmlMsg) {
+      document.getElementById('scan-subtitle').textContent = 'No se pudo completar el escaneo';
+      document.getElementById('scan-actions-top').style.display = 'none';
+      document.getElementById('btn-agregar').disabled = true;
+      document.getElementById('scan-list').innerHTML = `
+        <div style="padding:24px 12px;text-align:center;">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#e05555" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:12px;opacity:0.7;display:block;margin-left:auto;margin-right:auto;">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <div style="font-size:0.9rem;color:rgba(0,0,0,0.65);line-height:1.7;">${htmlMsg}</div>
+          <button class="btn btn-secondary btn-sm" onclick="cerrarScan();abrirConexion()" style="margin-top:16px;">Abrir Conexión</button>
+        </div>`;
+    }
+
+    function renderScanCards(lista) {
+      const subtitle = document.getElementById('scan-subtitle');
+      const scanList = document.getElementById('scan-list');
+      if (lista.length === 0) {
+        subtitle.textContent = 'No se encontraron dispositivos IoT';
+        scanList.innerHTML = `<div class="empty-state" style="padding:32px;">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <p>No se encontraron dispositivos en la red.</p></div>`;
+        return;
+      }
+      subtitle.textContent = `Se encontraron ${lista.length} dispositivo${lista.length !== 1 ? 's' : ''}`;
+      actualizarContadorScan();
+      scanList.innerHTML = lista.map((d, i) => `
+        <div class="scan-card" id="scan-card-${i}" onclick="toggleCard(${i})">
+          <input type="checkbox" class="scan-checkbox" id="chk-${i}" data-idx="${i}" onclick="event.stopPropagation();toggleCard(${i},this.checked)">
+          <div class="scan-info">
+            <div class="scan-name">${esc(d.nombreDispositivo||'(sin nombre)')}</div>
+            <div class="scan-meta">
+              ${d.tipo?`<span>📦 ${esc(d.tipo)}</span>`:''}
+              ${d.fabricanteNombre?`<span>🏭 ${esc(d.fabricanteNombre)}</span>`:''}
+              ${d.ipAddress?`<span>🌐 ${d.ipAddress}</span>`:''}
+              ${d.macAddress?`<span>📡 ${d.macAddress}</span>`:''}
+            </div>
+          </div>
+          <div class="scan-ubicacion" onclick="event.stopPropagation()">
+            <label for="ubic-${i}">Ubicación</label>
+            <input type="text" id="ubic-${i}" placeholder="ej. Sala de estar">
+          </div>
+        </div>`).join('');
+    }
+
+    function toggleCard(idx, forceValue) {
+      const chk  = document.getElementById(`chk-${idx}`);
+      const card = document.getElementById(`scan-card-${idx}`);
+      const val  = forceValue !== undefined ? forceValue : !chk.checked;
+      chk.checked = val;
+      card.classList.toggle('selected', val);
+      actualizarContadorScan();
+    }
+
+    function toggleTodos(masterChk) { scanData.forEach((_, i) => toggleCard(i, masterChk.checked)); }
+
+    function actualizarContadorScan() {
+      const total    = document.querySelectorAll('.scan-checkbox').length;
+      const selected = document.querySelectorAll('.scan-checkbox:checked').length;
+      document.getElementById('scan-count').textContent = selected > 0 ? `${selected} de ${total} seleccionados` : '';
+    }
+
+    function cerrarScan(e) {
+      if (e && e.target !== document.getElementById('modal-scan-backdrop')) return;
+      document.getElementById('modal-scan-backdrop').classList.remove('open');
+    }
+
+    async function agregarSeleccionados() {
+      const checks = [...document.querySelectorAll('.scan-checkbox:checked')];
+      if (checks.length === 0) { showToast('Selecciona al menos un dispositivo.', 'error'); return; }
+      const btn = document.getElementById('btn-agregar');
+      btn.disabled = true;
+      btn.textContent = `Guardando ${checks.length}...`;
+      let ok = 0, fail = 0;
+      for (const chk of checks) {
+        const idx = parseInt(chk.dataset.idx);
+        const d   = scanData[idx];
+        const ubicacion = (document.getElementById(`ubic-${idx}`)?.value || '').trim() || null;
+        try {
+          const resp = await apiFetch('/api/dispositivos', {
+            method: 'POST',
+            body: JSON.stringify({
+              nombreDispositivo: d.nombreDispositivo, tipo: d.tipo||null, modelo: d.modelo||null,
+              descripcion: d.descripcion||null, fabricanteNombre: d.fabricanteNombre||null,
+              fabricantePais: d.fabricantePais||null, fabricanteSitioWeb: d.fabricanteSitioWeb||null,
+              ipAddress: d.ipAddress||null, macAddress: d.macAddress||null, ubicacion
+            })
+          });
+          resp.ok ? ok++ : fail++;
+        } catch { fail++; }
+      }
+      btn.disabled = false;
+      btn.textContent = 'Añadir seleccionados';
+      document.getElementById('modal-scan-backdrop').classList.remove('open');
+      cargarDispositivos();
+      if (fail === 0) showToast(`${ok} dispositivo${ok!==1?'s':''} añadido${ok!==1?'s':''}.`);
+      else showToast(`${ok} añadido${ok!==1?'s':''}, ${fail} con error.`, 'error');
+    }
+
+    async function _intentarEnlaceOtp() {
+      const params = new URLSearchParams(window.location.search);
+      const otp    = params.get('scanner_otp');
+      const port   = params.get('scanner_port');
+      if (!otp) return;
+      window.history.replaceState({}, '', window.location.pathname);
+      if (port) localStorage.setItem(SCANNER_PORT_KEY, port);
+      try {
+        const resp = await fetch(`http://127.0.0.1:${port || '8765'}/api/auth/otp-exchange`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ otp }), signal: AbortSignal.timeout(6000),
+        });
+        if (!resp.ok) { showToast('No se pudo conectar al scanner.', 'error'); return; }
+        const data = await resp.json();
+        _scannerToken = data.token;
+        _actualizarTopbarScanner(true);
+        await _sincronizarModo();
+        showToast('Scanner conectado ✓');
+      } catch {
+        showToast('El scanner no respondió al enlace automático.', 'error');
+      }
+    }
+
+    // ===================== INIT =====================
+    setVista(currentVista);
+    _actualizarBotonesModoenConexion();
+    _actualizarTopbarScanner(false);
+    cargarDispositivos();
+    _intentarEnlaceOtp().then(() => { if (!_scannerToken) _autoLinkScanner(); });
+    setInterval(_pollScannerStatus, 15000);
+  </script>
+</body>
+</html>
