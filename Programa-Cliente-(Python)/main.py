@@ -16,7 +16,7 @@ def _open_browser():
 
 if __name__ == "__main__":
     print(f"[IoT Scanner] Servidor iniciando en http://127.0.0.1:{SCANNER_PORT}")
-    print(f"[IoT Scanner] El panel se abrirá automáticamente...")
+    print("[IoT Scanner] El panel se abrirá automáticamente...")
 
     threading.Thread(target=_open_browser, daemon=True).start()
 

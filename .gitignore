@@ -1,2 +1,24 @@
 **/__pycache__
 **/venv
+
+**/HELP.md
+**/target/
+**/.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+**/.apt_generated
+**/.classpath
+**/.factorypath
+**/.project
+**/.settings
+**/.springBeans
+**/.sts4-cache
+
+### VS Code ###
+**/.vscode/
+
+**/docker-compose.yml
+**/Dockerfile
+**/.gitattributes
+**/.dockerignore
