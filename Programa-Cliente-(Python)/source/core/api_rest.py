@@ -102,9 +102,9 @@ def set_mode(body: ModeBody, _=Depends(_require_token)):
 def run_scan(mode: str = "nmap", _=Depends(_require_token)):
     try:
         if mode == "builtin":
-            from scanner_builtin import scan
+            from source.core.module.openscan import scan
         else:
-            from scanner_nmap import scan
+            from source.core.module.scanner_nmap import scan
         return scan()
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e))
