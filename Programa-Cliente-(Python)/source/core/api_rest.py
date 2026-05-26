@@ -110,3 +110,40 @@ def run_scan(mode: str = "nmap", _=Depends(_require_token)):
         raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error de escaneo: {str(e)}")
+
+
+class Esp32SignalBody(BaseModel):
+    ipAddress: str
+    action: str  # encendido | apagar
+
+
+@app.get("/api/esp32/status")
+def esp32_status(ipAddress: str, _=Depends(_require_token)):
+    """Consulta el estado actual del ESP32-NesANTime (respuesta con ok)."""
+    from source.core.module.esp32_control import query_status
+
+    try:
+        return query_status(ipAddress)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al consultar ESP32: {str(e)}")
+
+
+@app.post("/api/esp32/signal")
+def esp32_signal(body: Esp32SignalBody, _=Depends(_require_token)):
+    """Envía encender/apagar al ESP32-NesANTime; solo ok si el dispositivo confirma."""
+    from source.core.module.esp32_control import send_signal
+
+    if body.action not in ("encendido", "apagar"):
+        raise HTTPException(status_code=400, detail="Acción inválida. Usa 'encendido' o 'apagar'.")
+    try:
+        return send_signal(body.ipAddress, body.action)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al controlar ESP32: {str(e)}")

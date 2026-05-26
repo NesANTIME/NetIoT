@@ -54,6 +54,15 @@
     .btn-sm { padding: 6px 14px; font-size: 0.78rem; }
     .btn-manage { background: rgba(25,57,94,0.1); color: #19395e; }
     .btn-manage:hover { background: rgba(25,57,94,0.18); }
+    .esp32-badge { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; background: rgba(25,57,94,0.12); color: #19395e; margin-top: 4px; }
+    .esp32-toggle-group { display: inline-flex; border-radius: 10px; overflow: hidden; border: 1.5px solid rgba(25,57,94,0.22); background: rgba(255,255,255,0.35); }
+    .esp32-toggle-btn { border: none; background: transparent; color: rgba(25,57,94,0.65); padding: 6px 12px; font-family: 'Raleway', sans-serif; font-size: 0.74rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer; transition: background 0.2s, color 0.2s; display: inline-flex; align-items: center; gap: 5px; }
+    .esp32-toggle-btn:hover:not(:disabled) { background: rgba(25,57,94,0.08); color: #19395e; }
+    .esp32-toggle-btn.active[data-esp32-role="on"] { background: #19395e; color: #D8E8C5; }
+    .esp32-toggle-btn.active[data-esp32-role="off"] { background: rgba(0,0,0,0.12); color: #1a1a1a; }
+    .esp32-toggle-btn:disabled { opacity: 0.5; cursor: wait; }
+    .esp32-toggle-btn.pending { animation: esp32Pulse 0.9s ease infinite; }
+    @keyframes esp32Pulse { 0%,100%{opacity:1;}50%{opacity:0.55;} }
     .btn-vista { background: rgba(0,0,0,0.06); color: rgba(0,0,0,0.55); border: 1.5px solid transparent; padding: 7px 13px; font-size: 0.78rem; }
     .btn-vista:hover { background: rgba(0,0,0,0.11); color: #1a1a1a; }
     .btn-vista.active { background: rgba(25,57,94,0.15); color: #19395e; border-color: rgba(25,57,94,0.25); }
@@ -157,6 +166,10 @@
     .scanner-chip:hover { background: rgba(255,255,255,0.13); border-color: rgba(255,255,255,0.2); }
     .scanner-chip .status-dot { width: 9px; height: 9px; flex-shrink: 0; }
     #topbar-status-text { font-size: 0.75rem; font-weight: 600; color: rgba(255,255,255,0.6); white-space: nowrap; letter-spacing: 0.02em; }
+    .switch-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.2); transition: .3s; border-radius: 20px; }
+    .switch-slider::before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
+    input:checked + .switch-slider { background-color: #4e7c3a; }
+    input:checked + .switch-slider::before { transform: translateX(20px); }
   </style>
 </head>
 <body>
@@ -344,8 +357,8 @@
 
         <div class="field">
           <label>Puerto del scanner</label>
-          <input type="number" id="cfg-port" value="8765" min="1024" max="65535">
-          <div style="font-size:0.75rem;color:rgba(0,0,0,0.4);margin-top:4px;">Por defecto: 8765. Cambia solo si configuraste otro puerto.</div>
+          <input type="number" id="cfg-port" value="8000" min="1024" max="65535">
+          <div style="font-size:0.75rem;color:rgba(0,0,0,0.4);margin-top:4px;">Por defecto: 8000 (<code>launch.py</code>). También usado para control ESP32-NesANTime.</div>
         </div>
 
         <div style="margin-bottom:16px;">
@@ -370,7 +383,8 @@
           <strong>Cómo conectar el IoT Scanner:</strong>
           <ol>
             <li>Descarga el scanner desde la carpeta <code>Programa Cliente (Python)</code></li>
-            <li>Ejecuta: <code>python main.py</code></li>
+            <li>Ejecuta: <code>python launch.py</code> (FastAPI en puerto 8000 por defecto)</li>
+            <li>Los dispositivos <strong>ESP32-NesANTime</strong> tienen <em>Encender</em> / <em>Apagar</em>; el estado solo se mantiene si el ESP32 responde OK</li>
             <li>El scanner abre el dashboard automáticamente y se conecta</li>
             <li>Si ya está corriendo, haz clic en <strong>Reconectar</strong></li>
           </ol>
@@ -592,8 +606,158 @@
       return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>`;
     }
 
+    const ESP32_NESANTIME_MODEL = 'ESP32-NesANTime';
+    const ESP32_POWER_KEY = 'esp32_power_state';
+    let esp32PowerState = {};
+    let esp32Pending = new Set();
+
+    function loadEsp32PowerState() {
+      try {
+        esp32PowerState = JSON.parse(localStorage.getItem(ESP32_POWER_KEY) || '{}') || {};
+      } catch { esp32PowerState = {}; }
+    }
+
+    function saveEsp32PowerState() {
+      localStorage.setItem(ESP32_POWER_KEY, JSON.stringify(esp32PowerState));
+    }
+
+    function isEsp32NesANTime(d) {
+      return (d.modelo || '').trim().toLowerCase() === ESP32_NESANTIME_MODEL.toLowerCase();
+    }
+
+    function getEsp32State(deviceId) {
+      const s = esp32PowerState[String(deviceId)];
+      return s === 'on' || s === 'off' ? s : 'unknown';
+    }
+
+    function paintEsp32Controls(deviceId) {
+      const state = getEsp32State(deviceId);
+      const pending = esp32Pending.has(String(deviceId));
+      document.querySelectorAll(`[data-esp32-id="${deviceId}"]`).forEach(btn => {
+        const role = btn.dataset.esp32Role;
+        btn.disabled = pending;
+        btn.classList.toggle('pending', pending);
+        btn.classList.toggle('active', !pending && state !== 'unknown' && role === state);
+      });
+    }
+
+    function setEsp32UiState(deviceId, state, persist = true) {
+      const key = String(deviceId);
+      if (state === 'unknown') delete esp32PowerState[key];
+      else esp32PowerState[key] = state;
+      if (persist) saveEsp32PowerState();
+      paintEsp32Controls(key);
+    }
+
+    function esp32ControlBtns(d) {
+      if (!isEsp32NesANTime(d)) return '';
+      if (!d.ipAddress) {
+        return `<span class="esp32-badge" title="Añade la IP en Editar para habilitar control">NesANTime · sin IP</span>`;
+      }
+      const st = getEsp32State(d.id);
+      const onActive  = st === 'on'  ? ' active' : '';
+      const offActive = st === 'off' ? ' active' : '';
+      return `
+        <div class="esp32-toggle-group" title="Control vía cliente Python → ESP32">
+          <button type="button" class="esp32-toggle-btn${onActive}" data-esp32-id="${d.id}" data-esp32-role="on"
+            onclick="toggleEsp32Power(${d.id},'${esc(d.ipAddress)}','${esc(d.nombreDispositivo)}','on')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            Encender
+          </button>
+          <button type="button" class="esp32-toggle-btn${offActive}" data-esp32-id="${d.id}" data-esp32-role="off"
+            onclick="toggleEsp32Power(${d.id},'${esc(d.ipAddress)}','${esc(d.nombreDispositivo)}','off')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            Apagar
+          </button>
+        </div>`;
+    }
+
+    async function fetchEsp32Api(path, opts = {}) {
+      let scanToken = await getScannerToken(false) || await getScannerToken(true);
+      if (!scanToken) throw new Error('SCANNER_OFFLINE');
+      const resp = await fetch(`${getScannerUrl()}${path}`, {
+        ...opts,
+        headers: {
+          'Authorization': `Bearer ${scanToken}`,
+          'Content-Type': 'application/json',
+          ...(opts.headers || {}),
+        },
+        signal: AbortSignal.timeout(8000),
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (resp.status === 401) {
+        _scannerToken = null;
+        throw new Error('SCANNER_AUTH');
+      }
+      if (!resp.ok) {
+        const err = new Error(data.detail || `Error ${resp.status}`);
+        err.detail = data.detail;
+        throw err;
+      }
+      return data;
+    }
+
+    async function syncEsp32Status(deviceId, ip, silent = true) {
+      if (!ip) return;
+      try {
+        const data = await fetchEsp32Api(`/api/esp32/status?ipAddress=${encodeURIComponent(ip)}`);
+        if (data.ok && data.powerState) setEsp32UiState(deviceId, data.powerState);
+      } catch (err) {
+        if (!silent && err.message !== 'SCANNER_OFFLINE' && err.message !== 'SCANNER_AUTH') {
+          showToast(err.detail || err.message || 'No se pudo leer el estado del ESP32.', 'error');
+        }
+      }
+    }
+
+    async function syncAllEsp32Devices() {
+      const lista = cachedLista.filter(d => isEsp32NesANTime(d) && d.ipAddress);
+      await Promise.all(lista.map(d => syncEsp32Status(d.id, d.ipAddress, true)));
+    }
+
+    async function toggleEsp32Power(deviceId, ip, nombre, targetState) {
+      const key = String(deviceId);
+      const prevState = getEsp32State(deviceId);
+      if (prevState === targetState) return;
+      if (esp32Pending.has(key)) return;
+
+      const action = targetState === 'on' ? 'encendido' : 'apagar';
+      const label  = targetState === 'on' ? 'Encendido' : 'Apagado';
+
+      esp32Pending.add(key);
+      setEsp32UiState(deviceId, targetState, false);
+
+      try {
+        const data = await fetchEsp32Api('/api/esp32/signal', {
+          method: 'POST',
+          body: JSON.stringify({ ipAddress: ip, action }),
+        });
+        if (!data.ok) throw new Error('El ESP32 no confirmó la acción.');
+        const confirmed = (data.powerState === 'on' || data.powerState === 'off') ? data.powerState : targetState;
+        setEsp32UiState(deviceId, confirmed);
+        showToast(`${nombre}: ${label} confirmado por el ESP32.`);
+      } catch (err) {
+        if (prevState === 'unknown') {
+          delete esp32PowerState[key];
+          saveEsp32PowerState();
+        } else {
+          setEsp32UiState(deviceId, prevState);
+        }
+        if (err.message === 'SCANNER_OFFLINE') {
+          showToast('Conecta el IoT Scanner (python launch.py) en Menú → Conexión.', 'error');
+        } else if (err.message === 'SCANNER_AUTH') {
+          showToast('Sesión del scanner expirada. Reconecta en Conexión.', 'error');
+        } else {
+          showToast(`${nombre}: no se aplicó ${label}. ${err.detail || err.message || 'Sin confirmación OK.'}`, 'error');
+        }
+      } finally {
+        esp32Pending.delete(key);
+        paintEsp32Controls(key);
+      }
+    }
+
     function accionesBtns(d) {
-      return `<button class="btn btn-secondary btn-sm" onclick="abrirEdit(${d.id})">
+      return `${esp32ControlBtns(d)}
+         <button class="btn btn-secondary btn-sm" onclick="abrirEdit(${d.id})">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           Editar
          </button>
@@ -616,7 +780,7 @@
       }
       tbody.innerHTML = lista.map(d => `
         <tr>
-          <td><div style="font-weight:700;font-size:0.9rem;">${esc(d.nombreDispositivo)}</div>${d.modelo?`<div style="font-size:0.75rem;color:rgba(0,0,0,0.45);">${esc(d.modelo)}</div>`:''}</td>
+          <td><div style="font-weight:700;font-size:0.9rem;">${esc(d.nombreDispositivo)}</div>${d.modelo?`<div style="font-size:0.75rem;color:rgba(0,0,0,0.45);">${esc(d.modelo)}</div>`:''}${isEsp32NesANTime(d)?'<div class="esp32-badge">Control NesANTime</div>':''}</td>
           <td>${d.tipo?`<span class="badge">${esc(d.tipo)}</span>`:'–'}</td>
           <td><div>${d.fabricanteNombre?esc(d.fabricanteNombre):'–'}</div>${d.fabricantePais?`<div style="font-size:0.75rem;color:rgba(0,0,0,0.45);">${esc(d.fabricantePais)}</div>`:''}</td>
           <td style="font-size:0.83rem;font-family:monospace;">${d.ipAddress||'–'}</td>
@@ -671,6 +835,7 @@
         cachedLista = Array.isArray(data) ? data : [];
         if (currentVista === 'lista') renderTabla(cachedLista);
         else renderGrid(cachedLista);
+        syncAllEsp32Devices();
       } catch (err) {
         if (err.message !== 'No autorizado') {
           const errHtml = '<div style="text-align:center;color:#e05555;padding:32px;">Error al cargar dispositivos</div>';
@@ -846,7 +1011,8 @@
             <div class="disp-name">${esc(d.nombreDispositivo)}</div>
             <div class="disp-sub">${[d.ipAddress, d.macAddress, d.ubicacion].filter(Boolean).join(' · ') || 'Sin datos de red'}</div>
           </div>
-          <div style="display:flex;gap:6px;">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
+            ${esp32ControlBtns(d)}
             <button class="btn btn-secondary btn-sm" onclick="cerrarDispositivos();abrirEdit(${d.id})">Editar</button>
             <button class="btn btn-danger btn-sm" onclick="eliminarDesdeModal(${d.id},'${esc(d.nombreDispositivo)}')">Quitar</button>
           </div>
@@ -902,7 +1068,7 @@
     }
 
     function getScannerUrl() {
-      return `http://127.0.0.1:${localStorage.getItem(SCANNER_PORT_KEY) || '8765'}`;
+      return `http://127.0.0.1:${localStorage.getItem(SCANNER_PORT_KEY) || '8000'}`;
     }
 
     async function _autoLinkScanner() {
@@ -964,7 +1130,7 @@
     }
 
     function abrirConexion() {
-      document.getElementById('cfg-port').value = localStorage.getItem(SCANNER_PORT_KEY) || '8765';
+      document.getElementById('cfg-port').value = localStorage.getItem(SCANNER_PORT_KEY) || '8000';
       _actualizarBotonesModoenConexion();
       document.getElementById('modal-conexion-backdrop').classList.add('open');
       verificarScanner();
@@ -976,7 +1142,7 @@
     }
 
     function guardarConfigScanner() {
-      const port = document.getElementById('cfg-port').value.trim() || '8765';
+      const port = document.getElementById('cfg-port').value.trim() || '8000';
       localStorage.setItem(SCANNER_PORT_KEY, port);
       _scannerToken = null;
       showToast('Puerto del scanner guardado.');
@@ -988,7 +1154,7 @@
       const text = document.getElementById('conn-status-text');
       dot.className = 'status-dot checking';
       text.textContent = 'Conectando...';
-      const port = document.getElementById('cfg-port')?.value.trim() || localStorage.getItem(SCANNER_PORT_KEY) || '8765';
+      const port = document.getElementById('cfg-port')?.value.trim() || localStorage.getItem(SCANNER_PORT_KEY) || '8000';
       try {
         const otpResp = await fetch(`http://127.0.0.1:${port}/api/auth/request-otp`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1137,7 +1303,7 @@
       const btn = document.getElementById('btn-agregar');
       btn.disabled = true;
       btn.textContent = `Guardando ${checks.length}...`;
-      let ok = 0, fail = 0;
+      let ok = 0, fail = 0, esp32Added = 0;
       for (const chk of checks) {
         const idx = parseInt(chk.dataset.idx);
         const d   = scanData[idx];
@@ -1152,15 +1318,21 @@
               ipAddress: d.ipAddress||null, macAddress: d.macAddress||null, ubicacion
             })
           });
-          resp.ok ? ok++ : fail++;
+          if (resp.ok) {
+            ok++;
+            if ((d.modelo || '').trim().toLowerCase() === ESP32_NESANTIME_MODEL.toLowerCase()) esp32Added++;
+          } else fail++;
         } catch { fail++; }
       }
       btn.disabled = false;
       btn.textContent = 'Añadir seleccionados';
       document.getElementById('modal-scan-backdrop').classList.remove('open');
       cargarDispositivos();
-      if (fail === 0) showToast(`${ok} dispositivo${ok!==1?'s':''} añadido${ok!==1?'s':''}.`);
-      else showToast(`${ok} añadido${ok!==1?'s':''}, ${fail} con error.`, 'error');
+      if (fail === 0) {
+        let msg = `${ok} dispositivo${ok!==1?'s':''} añadido${ok!==1?'s':''}.`;
+        if (esp32Added > 0) msg += ` Control NesANTime (Encender/Apagar) habilitado.`;
+        showToast(msg);
+      } else showToast(`${ok} añadido${ok!==1?'s':''}, ${fail} con error.`, 'error');
     }
 
     async function _intentarEnlaceOtp() {
@@ -1171,7 +1343,7 @@
       window.history.replaceState({}, '', window.location.pathname);
       if (port) localStorage.setItem(SCANNER_PORT_KEY, port);
       try {
-        const resp = await fetch(`http://127.0.0.1:${port || '8765'}/api/auth/otp-exchange`, {
+        const resp = await fetch(`http://127.0.0.1:${port || '8000'}/api/auth/otp-exchange`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ otp }), signal: AbortSignal.timeout(6000),
         });
@@ -1187,6 +1359,7 @@
     }
 
     // ===================== INIT =====================
+    loadEsp32PowerState();
     setVista(currentVista);
     _actualizarBotonesModoenConexion();
     _actualizarTopbarScanner(false);
