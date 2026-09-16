@@ -1,0 +1,10 @@
+service/.env
+
+service/.vscode/
+service/build/
+service/src/main/**/build/
+service/src/test/**/build/
+
+service/target/
+service/.mvn/wrapper/maven-wrapper.jar
+service/dist/
