@@ -1,5 +1,7 @@
 package com.netiot.service.service;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import com.netiot.service.dto.DeviceDTO;
@@ -25,6 +27,11 @@ public class DeviceService {
         User user = getUser(email);
         return deviceRepository.findByUserIdOrderByFechaRegistroDesc(user.getId())
                 .stream().map(DeviceDTO::from).toList();
+    }
+
+    public Page<DeviceDTO> getAll(String email, Pageable pageable) {
+        User user = getUser(email);
+        return deviceRepository.findByUserId(user.getId(), pageable).map(DeviceDTO::from);
     }
 
     public DeviceDTO create(String email, DeviceDTO dto) {

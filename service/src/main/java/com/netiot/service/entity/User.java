@@ -34,6 +34,9 @@ public class User {
     @Column(nullable = false)
     private boolean locked = false;
 
+    @Column(nullable = false)
+    private int failedLoginAttempts = 0;
+
     @NotBlank
     @Column(nullable = false)
     private String name;
@@ -90,6 +93,13 @@ public class User {
     }
     public void setLocked(boolean locked) {
         this.locked = locked;
+    }
+
+    public int getFailedLoginAttempts() {
+        return failedLoginAttempts;
+    }
+    public void setFailedLoginAttempts(int failedLoginAttempts) {
+        this.failedLoginAttempts = failedLoginAttempts;
     }
 
     public String getName() {

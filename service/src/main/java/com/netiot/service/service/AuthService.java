@@ -14,6 +14,8 @@ import com.netiot.service.security.JwtTokenProvider;
 @Service
 public class AuthService {
 
+    private static final int MAX_ATTEMPTS = 5;
+
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
@@ -42,10 +44,21 @@ public class AuthService {
         User user = userRepository.findByEmail(req.getCorreo())
                 .orElseThrow(() -> new IllegalArgumentException("Correo o contraseña incorrectos."));
 
+        if (user.isLocked()) {
+            throw new IllegalArgumentException("Cuenta bloqueada por intentos fallidos. Contacta soporte.");
+        }
+
         if (!passwordEncoder.matches(req.getPassword(), user.getPasswordHash())) {
+            user.setFailedLoginAttempts(user.getFailedLoginAttempts() + 1);
+            if (user.getFailedLoginAttempts() >= MAX_ATTEMPTS) {
+                user.setLocked(true);
+            }
+            userRepository.save(user);
             throw new IllegalArgumentException("Correo o contraseña incorrectos.");
         }
 
+        user.setFailedLoginAttempts(0);
+        userRepository.save(user);
         String token = jwtTokenProvider.generateToken(user.getEmail());
         return new LoginResponseDTO(token, user.getName(), user.getEmail(), user.getRole());
     }

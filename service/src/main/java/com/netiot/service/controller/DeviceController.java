@@ -1,6 +1,9 @@
 package com.netiot.service.controller;
 
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -9,6 +12,8 @@ import org.springframework.web.bind.annotation.*;
 
 import com.netiot.service.dto.DeviceDTO;
 import com.netiot.service.service.DeviceService;
+
+import jakarta.validation.Valid;
 
 import java.util.Map;
 
@@ -23,12 +28,19 @@ public class DeviceController {
     }
 
     @GetMapping
-    public ResponseEntity<?> list(@AuthenticationPrincipal UserDetails userDetails) {
-        return ResponseEntity.ok(deviceService.getAll(userDetails.getUsername()));
+    public ResponseEntity<?> list(@AuthenticationPrincipal UserDetails userDetails,
+                                   @RequestParam(defaultValue = "0") int page,
+                                   @RequestParam(defaultValue = "20") int size) {
+        int safeSize = Math.min(Math.max(size, 1), 100);
+        Page<DeviceDTO> result = deviceService.getAll(
+                userDetails.getUsername(),
+                PageRequest.of(Math.max(page, 0), safeSize, Sort.by(Sort.Direction.DESC, "fechaRegistro"))
+        );
+        return ResponseEntity.ok(result);
     }
 
     @PostMapping
-    public ResponseEntity<?> create(@RequestBody DeviceDTO dto,
+    public ResponseEntity<?> create(@Valid @RequestBody DeviceDTO dto,
                                      @AuthenticationPrincipal UserDetails userDetails) {
         try {
             return ResponseEntity.status(HttpStatus.CREATED)
@@ -40,7 +52,7 @@ public class DeviceController {
 
     @PutMapping("/{id}")
     public ResponseEntity<?> update(@PathVariable Long id,
-                                     @RequestBody DeviceDTO dto,
+                                     @Valid @RequestBody DeviceDTO dto,
                                      @AuthenticationPrincipal UserDetails userDetails) {
         try {
             return ResponseEntity.ok(deviceService.update(userDetails.getUsername(), id, dto));

@@ -5,19 +5,46 @@ import java.time.LocalDateTime;
 
 import com.netiot.service.entity.Device;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+
 public class DeviceDTO {
     private Long id;
+
+    @NotBlank(message = "El nombre del dispositivo es obligatorio.")
+    @Size(max = 100, message = "El nombre del dispositivo no puede exceder 100 caracteres.")
     private String nombreDispositivo;
+
+    @Size(max = 100, message = "El tipo no puede exceder 100 caracteres.")
     private String tipo;
+
+    @Size(max = 100, message = "El modelo no puede exceder 100 caracteres.")
     private String modelo;
+
+    @Size(max = 500, message = "La descripción no puede exceder 500 caracteres.")
     private String descripcion;
+
+    @Size(max = 150, message = "El nombre del fabricante no puede exceder 150 caracteres.")
     private String fabricanteNombre;
+
+    @Size(max = 100, message = "El país del fabricante no puede exceder 100 caracteres.")
     private String fabricantePais;
+
+    @Size(max = 300, message = "El sitio web del fabricante no puede exceder 300 caracteres.")
     private String fabricanteSitioWeb;
+
+    @Pattern(regexp = "^(\\d{1,3}\\.){3}\\d{1,3}$", message = "IP inválida.")
     private String ipAddress;
+
+    @Pattern(regexp = "^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$", message = "MAC inválida.")
     private String macAddress;
+
+    @Size(max = 150, message = "La ubicación no puede exceder 150 caracteres.")
     private String ubicacion;
+
     private boolean tieneApi;
+
     private LocalDateTime fechaRegistro;
 
     public static DeviceDTO from(Device d) {
